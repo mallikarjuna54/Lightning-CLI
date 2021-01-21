@@ -27,6 +27,7 @@ const regexp = /^(?!src|static|settings\.json|metadata\.json)(.+)$/
 
 let initCallbackProcess
 let wss
+let client
 
 const initWebSocketServer = async () => {
   const port = process.env.LNG_LIVE_RELOAD_PORT || 8888
@@ -36,6 +37,11 @@ const initWebSocketServer = async () => {
     if (e.code === 'EADDRINUSE') {
       console.log(chalk.red(chalk.underline(`Process already running on port: ${port}`)))
     }
+  })
+
+  server.on('connection', ws => {
+    client = ws
+    console.log(chalk.green(chalk.underline('New connection')))
   })
 
   process.on('SIGINT', () => {
@@ -97,11 +103,10 @@ module.exports = (initCallback, watchCallback) => {
           .then(result => {
             busy = false
             watchCallback && watchCallback()
+
             // send reload signal over socket
-            if (wss) {
-              wss.clients.forEach(client => {
-                client.send('reload')
-              })
+            if (wss && client) {
+              client.send('reload')
             }
           })
           .catch(() => {
